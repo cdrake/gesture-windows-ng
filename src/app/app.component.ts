@@ -122,9 +122,11 @@ export class AppComponent implements AfterViewInit {
       const hands = await this.detector.estimateHands(this.videoElement);
       // console.log(hands);
       if (hands.length > 0) {
-        const result = hands[0].keypoints;
-        // console.log(result);
-        this.drawKeypoints(result);
+        for(const hand of hands) {
+          const result = hand.keypoints;
+          // console.log(result);
+          this.drawKeypoints(result, hand.handedness);
+        }
         // console.log('saw hand');
       }
       previousTimeStamp = timestamp;
@@ -138,28 +140,37 @@ export class AppComponent implements AfterViewInit {
     this.renderingCtx.fill();
   }
 
-  drawKeypoints(keypoints: [{x: number, y: number, score: undefined, name: string}]) {    
+  drawKeypoints(keypoints: [{x: number, y: number, score: undefined, name: string}], handedness: string) {    
+    
+    if(handedness === "Right") {
+      this.renderingCtx.strokeStyle = 'red';
+      this.renderingCtx.fillStyle = 'red';
+    }
+    else {
+      this.renderingCtx.strokeStyle = 'blue';
+      this.renderingCtx.fillStyle = 'blue';
+    }
     const keypointsArray = keypoints;
     for (let i = 0; i < keypointsArray.length; i++) {
       // const y = keypointsArray[i][0];
       // const x = keypointsArray[i][1];
-      this.drawPoint(keypointsArray[i].x, keypointsArray[i].y, 3);
+      this.drawPoint(keypointsArray[i].y, keypointsArray[i].x, 3);
     }
 
-    // const fingers = Object.keys(fingerLookupIndices);
-    // for (let i = 0; i < fingers.length; i++) {
-    //   const finger = fingers[i];
-    //   const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
-    //   this.drawPath(points, false);
-    // }
+    const fingers = Object.keys(fingerLookupIndices);
+    for (let i = 0; i < fingers.length; i++) {
+      const finger = fingers[i];
+      const points = fingerLookupIndices[finger].map(idx => keypoints[idx]);
+      this.drawPath(points, false);
+    }
   }
 
-  drawPath(points: number[][], closePath: boolean) {
+  drawPath(points: {x: number, y: number, score: undefined, name: string}[], closePath: boolean) {
     const region = new Path2D();
-    region.moveTo(points[0][0], points[0][1]);
+    region.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
       const point = points[i];
-      region.lineTo(point[0], point[1]);
+      region.lineTo(point.x, point.y);
     }
 
     if (closePath) {
