@@ -4,6 +4,8 @@ import { Hand } from '@tensorflow-models/hand-pose-detection';
 import { MediaPipeHandsModelConfig } from '@tensorflow-models/hand-pose-detection/dist/mediapipe/types';
 import { KeyObject } from 'crypto';
 
+type KeyPoint = { x: number, y: number, score: undefined, name: string }
+
 function isMobile() {
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -175,7 +177,32 @@ export class AppComponent implements AfterViewInit {
     this.renderingCtx.fill();
   }
 
-  detectPose(keypoints: [{ x: number, y: number, score: undefined, name: string }], handedness: string): HandPose {
+  isCurled(tip: KeyPoint, dip: KeyPoint, pip: KeyPoint ): boolean {
+    let isCurled = false;
+    const slope = (dip.x != pip.x) ? (dip.y - pip.y) / (dip.x - pip.x) : Infinity;
+    if(slope === Infinity) {
+      isCurled = (pip.y > tip.y) ? tip.y > dip.y : dip.y > tip.y;
+    }
+    return isCurled;
+  }
+
+  isGrip(fingerMap: Map<string, KeyPoint>): boolean {
+    let isGrip = true;
+    let fingers = ['index', 'middle', 'ring', 'pinky'];
+    for(const finger in fingers) {
+      const fingerTip = fingerMap.get(`${finger}_finger_tip`);
+      const fingerDip = fingerMap.get(`${finger}_finger_dip`);
+      const fingerPip = fingerMap.get(`${finger}_finger_pip`);
+      if(!this.isCurled(fingerTip!, fingerDip!, fingerPip!)) {
+        isGrip = false;
+        break;
+      }
+    }
+
+    return isGrip;
+  }
+
+  detectPose(keypoints: KeyPoint[], handedness: string): HandPose {
     // console.log(keypoints);
     let fingerMap = new Map(keypoints.map(obj => [obj.name, obj]));
     const middleFingerTip = fingerMap.get('middle_finger_tip');
