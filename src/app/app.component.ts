@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ViewChild } from '@angular/core';
 import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
+import { Hand } from '@tensorflow-models/hand-pose-detection';
 import { MediaPipeHandsModelConfig } from '@tensorflow-models/hand-pose-detection/dist/mediapipe/types';
 import { KeyObject } from 'crypto';
 
@@ -18,7 +19,7 @@ const detectorConfig = {
   modelType: 'full',
   solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/'
 } as MediaPipeHandsModelConfig;
-
+const threshold = 5;
 
 const fingerLookupIndices: { [key: string]: number[] } = {
   thumb: [0, 1, 2, 3, 4],
@@ -30,7 +31,9 @@ const fingerLookupIndices: { [key: string]: number[] } = {
 
 enum HandPose {
   Unknown,
-  KnobGrip
+  KnobGripNeutral,
+  KnobGripClockwise,
+  KnobGripCounterClockwise
 }
 
 enum KnobGesture {
@@ -102,7 +105,7 @@ export class AppComponent implements AfterViewInit {
     this.outputCanvas.height = videoHeight;
     video.width = videoWidth;
     video.height = videoHeight;
-    
+
     this.renderingCtx = this.outputCanvas.getContext('2d')!;
     this.renderingCtx.clearRect(0, 0, videoWidth, videoHeight);
     this.renderingCtx.strokeStyle = 'red';
@@ -111,7 +114,7 @@ export class AppComponent implements AfterViewInit {
     console.log('initialized');
   }
 
-  
+
 
   async detectHands(timestamp: DOMHighResTimeStamp) {
     if (start === undefined) {
@@ -119,16 +122,46 @@ export class AppComponent implements AfterViewInit {
     }
     const elapsed = timestamp - start;
 
-    if (previousTimeStamp !== timestamp ) {
+    if (previousTimeStamp !== timestamp) {
       this.renderingCtx.drawImage(
         this.videoElement, 0, 0, this.videoElement.width, this.videoElement.height, 0, 0, this.outputCanvas.width,
         this.outputCanvas.height);
       const hands = await this.detector.estimateHands(this.videoElement);
       if (hands.length > 0) {
-        for(const hand of hands) {
+        for (const hand of hands) {
           const result = hand.keypoints;
-          this.drawKeypoints(result, hand.handedness);
+
           this.detectGesture(result, hand.handedness);
+          let isRightHand = hand.handedness === 'Right';
+          let color: string;
+          if (isRightHand) {
+            switch (this.rightHandPose) {
+              case HandPose.KnobGripClockwise:
+                color = 'green';
+                break;
+              case HandPose.KnobGripCounterClockwise:
+                color = 'yellow';
+                break;
+              default:
+                color = 'red';
+                break;
+            }
+
+          }
+          else {
+            switch (this.leftHandPose) {
+              case HandPose.KnobGripClockwise:
+                color = 'purple';
+                break;
+              case HandPose.KnobGripCounterClockwise:
+                color = 'aqua';
+                break;
+              default:
+                color = 'blue';
+                break;
+            }
+          }
+          this.drawKeypoints(result, color);
         }
       }
       previousTimeStamp = timestamp;
@@ -142,7 +175,7 @@ export class AppComponent implements AfterViewInit {
     this.renderingCtx.fill();
   }
 
-  detectPose(keypoints: [{x: number, y: number, score: undefined, name: string}]): HandPose {
+  detectPose(keypoints: [{ x: number, y: number, score: undefined, name: string }], handedness: string): HandPose {
     // console.log(keypoints);
     let fingerMap = new Map(keypoints.map(obj => [obj.name, obj]));
     const middleFingerTip = fingerMap.get('middle_finger_tip');
@@ -152,89 +185,63 @@ export class AppComponent implements AfterViewInit {
     const indexFingerDip = fingerMap.get('index_finger_dip');
     const ringFingerDip = fingerMap.get('ring_finger_dip');
     const isGrip = middleFingerDip!.y <= middleFingerTip!.y &&
-    indexFingerDip!.y <= indexFingerDip!.y &&
-    ringFingerDip!.y <= ringFingerDip!.y &&
-    middleFingerTip!.y < indexFingerTip!.y &&
-    middleFingerTip!.y < ringFingerTip!.y;
-    const pose = isGrip ? HandPose.KnobGrip : HandPose.Unknown;
+      indexFingerDip!.y <= indexFingerDip!.y &&
+      ringFingerDip!.y <= ringFingerDip!.y &&
+      middleFingerTip!.y < indexFingerTip!.y &&
+      middleFingerTip!.y < ringFingerTip!.y;
+    let pose = HandPose.Unknown;
+    if (isGrip) {
+      pose = HandPose.KnobGripNeutral;
+    }
+    else {
+      const compareFingerTip = handedness === 'Right' ? fingerMap.get('index_finger_tip') : fingerMap.get('ring_finger_tip');
+      if (middleFingerTip!.y - compareFingerTip!.y > threshold) {
+        pose = HandPose.KnobGripCounterClockwise;
+      }
+      else if (compareFingerTip!.y - middleFingerTip!.y > threshold) {
+        pose = HandPose.KnobGripClockwise;
+      }
+    }
     return pose;
   }
 
-  detectKnobTurn(keypoints: [{x: number, y: number, score: undefined, name: string}], handedness: string): KnobGesture {
+  detectKnobTurn(keypoints: [{ x: number, y: number, score: undefined, name: string }], handedness: string): KnobGesture {
     let gesture = KnobGesture.None;
     let fingerMap = new Map(keypoints.map(obj => [obj.name, obj]));
     const middleFingerTip = fingerMap.get('middle_finger_tip');
     const compareFingerTip = handedness === 'Right' ? fingerMap.get('index_finger_tip') : fingerMap.get('ring_finger_tip');
     console.log('detecting knob turn');
     console.log(keypoints);
-    if(compareFingerTip!.y < middleFingerTip!.y) {
+    if (middleFingerTip!.y - compareFingerTip!.y > threshold) {
       gesture = KnobGesture.TurnCounterClockwise;
-    }    
-    else if(compareFingerTip!.y > middleFingerTip!.y) {
+    }
+    else if (compareFingerTip!.y - middleFingerTip!.y > threshold) {
       gesture = KnobGesture.TurnClockwise;
     }
-    
+
     return gesture;
 
   }
 
-  detectGesture(keypoints: [{x: number, y: number, score: undefined, name: string}], handedness: string) {    
+  detectGesture(keypoints: [{ x: number, y: number, score: undefined, name: string }], handedness: string) {
     // check if we are in knob grip pose
     const isRightHand = handedness === 'Right';
     // const handPose = (isRightHand) ? this.rightHandPose : this.leftHandPose;
-    if(isRightHand) {
-      switch(this.rightHandPose) {
-        case HandPose.Unknown:
-          this.rightHandPose = this.detectPose(keypoints);
-          break;
-        case HandPose.KnobGrip:
-          // look for gesture
-          console.log('knob grip detected');
-          let gesture = this.detectKnobTurn(keypoints, handedness);
-          if(gesture === KnobGesture.TurnClockwise) {
-            console.log('turn clockwise detected');
-          }
-          else if(gesture === KnobGesture.TurnCounterClockwise) {
-            console.log('turn counterclockwise detected');
-          }
-          // update handpose
-          this.rightHandPose = this.detectPose(keypoints);
-          break;
 
-      }
+    if (isRightHand) {
+      this.rightHandPose = this.detectPose(keypoints, handedness);
     }
     else {
-      switch(this.leftHandPose) {
-        case HandPose.Unknown:
-          this.leftHandPose = this.detectPose(keypoints);
-          break;
-        case HandPose.KnobGrip:
-          console.log('knob grip detected');
-          let gesture = this.detectKnobTurn(keypoints, handedness);
-          if(gesture === KnobGesture.TurnClockwise) {
-            console.log('turn clockwise detected');
-          }
-          else if(gesture === KnobGesture.TurnCounterClockwise) {
-            console.log('turn counterclockwise detected');
-          }
-          this.leftHandPose = this.detectPose(keypoints);
-          break;
-
-      }
+      this.leftHandPose = this.detectPose(keypoints, handedness);
     }
-    
+
   }
 
-  drawKeypoints(keypoints: [{x: number, y: number, score: undefined, name: string}], handedness: string) {    
-    
-    if(handedness === "Right") {
-      this.renderingCtx.strokeStyle = 'red';
-      this.renderingCtx.fillStyle = 'red';
-    }
-    else {
-      this.renderingCtx.strokeStyle = 'blue';
-      this.renderingCtx.fillStyle = 'blue';
-    }
+  drawKeypoints(keypoints: [{ x: number, y: number, score: undefined, name: string }], color: string) {
+
+    this.renderingCtx.strokeStyle = color;
+    this.renderingCtx.fillStyle = color;
+
     const keypointsArray = keypoints;
     for (let i = 0; i < keypointsArray.length; i++) {
       this.drawPoint(keypointsArray[i].y, keypointsArray[i].x, 3);
@@ -248,7 +255,7 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-  drawPath(points: {x: number, y: number, score: undefined, name: string}[], closePath: boolean) {
+  drawPath(points: { x: number, y: number, score: undefined, name: string }[], closePath: boolean) {
     const region = new Path2D();
     region.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
