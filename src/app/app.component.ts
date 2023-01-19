@@ -31,6 +31,8 @@ const fingerLookupIndices: { [key: string]: number[] } = {
   pinky: [0, 17, 18, 19, 20]
 };
 
+const fingerNames = ['index', 'middle', 'ring', 'pinky'];
+
 enum HandPose {
   Unknown,
   KnobGripNeutral,
@@ -45,6 +47,15 @@ enum KnobGesture {
 }
 
 let start: DOMHighResTimeStamp, previousTimeStamp: DOMHighResTimeStamp;
+
+const dot = (a: number[], b: number[]) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
+const add = (a: number[], b: number[]) => a.map((e,i) => e + b[i]);
+const minus = (a: number[], b: number[]) => a.map((e,i) => e - b[i]);
+const squared = (x:number) => Math.pow(x, 2);
+const sum = (x:number[]) => x.reduce((a, x) => a + x, 0);
+const sumOfSquares = (x: number[]) => sum(x.map(squared));
+const magnitude = (a: number[]) => Math.sqrt(sumOfSquares(a));
+
 
 @Component({
   selector: 'app-root',
@@ -177,22 +188,49 @@ export class AppComponent implements AfterViewInit {
     this.renderingCtx.fill();
   }
 
-  isCurled(tip: KeyPoint, dip: KeyPoint, pip: KeyPoint ): boolean {
-    let isCurled = false;
-    const slope = (dip.x != pip.x) ? (dip.y - pip.y) / (dip.x - pip.x) : Infinity;
-    if(slope === Infinity) {
-      isCurled = (pip.y > tip.y) ? tip.y > dip.y : dip.y > tip.y;
-    }
-    return isCurled;
+  getAngleBetweenFingers(firstFingerName: string, secondFingerName: string, fingerMap: Map<string, KeyPoint>) {
+    const firstFinger = fingerMap.get(firstFingerName);
+    const secondFinger = fingerMap.get(secondFingerName);
+    const wrist = fingerMap.get('wrist');
+
+    const firstLine = minus([firstFinger!.x, firstFinger!.y], [wrist!.x, wrist!.y]);
+    const secondLine = minus([secondFinger!.x, secondFinger!.y], [wrist!.x, wrist!.y]);
+    const dotProduct = dot(firstLine, secondLine);
+    const firstMagnitude = magnitude(firstLine);
+    const secondMagnitude = magnitude(secondLine);
+    return Math.acos(dotProduct / (firstMagnitude * secondMagnitude));
   }
+
+  getHandAngle(fingerMap: Map<string, KeyPoint>): number {
+    const middleFingerTip = fingerMap.get('middle_finger_tip');
+    const wrist = fingerMap.get('wrist');
+    const delta = minus([middleFingerTip!.x, middleFingerTip!.y], [wrist!.x, wrist!.y]);
+    const deltaLength = magnitude(delta);
+    // const middleFingerLineLength = magnitude([middleFingerTip!.x, middleFingerTip!.y]);    
+    // const middleFingerAngle = Math.acos(middleFingerTip!.y / middleFingerLineLength)
+    // const wristLineLength = magnitude([wrist!.x, wrist!.y]);
+    // const wristAngle = Math.acos(wrist!.y / wristLineLength);
+
+    
+    return Math.acos(delta[1] / deltaLength);
+  }
+
+  isCurled(tip: KeyPoint, dip: KeyPoint, mcp: KeyPoint ): boolean {    
+    const tipDistance = Math.sqrt(Math.pow(tip.x - mcp.x, 2) + Math.pow(tip.y - mcp.y, 2));
+    const dipDistance = Math.sqrt(Math.pow(dip.x - mcp.x, 2) + Math.pow(dip.y - mcp.y, 2));
+    return tipDistance < dipDistance;
+  }
+
+  
 
   isGrip(fingerMap: Map<string, KeyPoint>): boolean {
     let isGrip = true;
-    let fingers = ['index', 'middle', 'ring', 'pinky'];
-    for(const finger in fingers) {
-      const fingerTip = fingerMap.get(`${finger}_finger_tip`);
-      const fingerDip = fingerMap.get(`${finger}_finger_dip`);
-      const fingerPip = fingerMap.get(`${finger}_finger_pip`);
+    
+    for(const fingerName of fingerNames) {
+      // console.log('fetching finger ' + fingerName);
+      const fingerTip = fingerMap.get(`${fingerName}_finger_tip`);
+      const fingerDip = fingerMap.get(`${fingerName}_finger_dip`);
+      const fingerPip = fingerMap.get(`${fingerName}_finger_mcp`);
       if(!this.isCurled(fingerTip!, fingerDip!, fingerPip!)) {
         isGrip = false;
         break;
@@ -205,28 +243,19 @@ export class AppComponent implements AfterViewInit {
   detectPose(keypoints: KeyPoint[], handedness: string): HandPose {
     // console.log(keypoints);
     let fingerMap = new Map(keypoints.map(obj => [obj.name, obj]));
-    const middleFingerTip = fingerMap.get('middle_finger_tip');
-    const indexFingerTip = fingerMap.get('index_finger_tip');
-    const ringFingerTip = fingerMap.get('ring_finger_tip');
-    const middleFingerDip = fingerMap.get('middle_finger_dip');
-    const indexFingerDip = fingerMap.get('index_finger_dip');
-    const ringFingerDip = fingerMap.get('ring_finger_dip');
-    const isGrip = middleFingerDip!.y <= middleFingerTip!.y &&
-      indexFingerDip!.y <= indexFingerDip!.y &&
-      ringFingerDip!.y <= ringFingerDip!.y &&
-      middleFingerTip!.y < indexFingerTip!.y &&
-      middleFingerTip!.y < ringFingerTip!.y;
     let pose = HandPose.Unknown;
-    if (isGrip) {
-      pose = HandPose.KnobGripNeutral;
-    }
-    else {
-      const compareFingerTip = handedness === 'Right' ? fingerMap.get('index_finger_tip') : fingerMap.get('ring_finger_tip');
-      if (middleFingerTip!.y - compareFingerTip!.y > threshold) {
+    if(this.isGrip(fingerMap)) {
+      console.log('is Grip');
+      const handAngle = this.getHandAngle(fingerMap);
+      console.log('hand angle is ' + handAngle);
+      if(handAngle > Math.PI / 8) {
+        pose = HandPose.KnobGripClockwise;
+      }
+      else if(handAngle < (-1 * Math.PI / 8)) {
         pose = HandPose.KnobGripCounterClockwise;
       }
-      else if (compareFingerTip!.y - middleFingerTip!.y > threshold) {
-        pose = HandPose.KnobGripClockwise;
+      else {
+        pose = HandPose.KnobGripNeutral;
       }
     }
     return pose;
