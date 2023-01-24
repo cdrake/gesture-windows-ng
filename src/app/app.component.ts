@@ -202,7 +202,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   getHandAngle(fingerMap: Map<string, KeyPoint>): number {
-    const middleFingerTip = fingerMap.get('middle_finger_tip');
+    const middleFingerTip = fingerMap.get('middle_finger_mcp');
     const wrist = fingerMap.get('wrist');
     const delta = minus([middleFingerTip!.x, middleFingerTip!.y], [wrist!.x, wrist!.y]);
     const deltaLength = magnitude(delta);
@@ -212,7 +212,7 @@ export class AppComponent implements AfterViewInit {
     // const wristAngle = Math.acos(wrist!.y / wristLineLength);
 
     
-    return Math.acos(delta[1] / deltaLength);
+    return Math.asin(delta[0] / deltaLength);
   }
 
   isCurled(tip: KeyPoint, dip: KeyPoint, mcp: KeyPoint ): boolean {    
@@ -249,10 +249,11 @@ export class AppComponent implements AfterViewInit {
       const handAngle = this.getHandAngle(fingerMap);
       console.log('hand angle is ' + handAngle);
       if(handAngle > Math.PI / 8) {
-        pose = HandPose.KnobGripClockwise;
+        pose = HandPose.KnobGripCounterClockwise;
+        
       }
       else if(handAngle < (-1 * Math.PI / 8)) {
-        pose = HandPose.KnobGripCounterClockwise;
+        pose = HandPose.KnobGripClockwise;
       }
       else {
         pose = HandPose.KnobGripNeutral;
