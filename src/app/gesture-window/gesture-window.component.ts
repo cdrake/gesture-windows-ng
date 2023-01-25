@@ -54,6 +54,7 @@ enum KnobGesture {
 }
 
 type Hand = {pose: HandPose, angle: number, position: {x: number, y: number}}
+type GestureWindow = {id: string, x: number, y: number, width: number, height: number}
 
 let start: DOMHighResTimeStamp, previousTimeStamp: DOMHighResTimeStamp;
 
@@ -79,6 +80,11 @@ export class GestureWindowComponent implements AfterViewInit {
   rightHandPose = HandPose.Unknown;
   leftHand = new Subject<Hand>();
   rightHand = new Subject<Hand>();
+
+  windowMap = new Map<string, GestureWindow>();
+
+  // add window changed, pose change, position change
+
   
   constructor() { }
 
@@ -232,26 +238,42 @@ export class GestureWindowComponent implements AfterViewInit {
     const wrist = fingerMap.get('wrist');
     const delta = minus([middleFingerTip!.x, middleFingerTip!.y], [wrist!.x, wrist!.y]);
     const deltaLength = magnitude(delta);
-    // const middleFingerLineLength = magnitude([middleFingerTip!.x, middleFingerTip!.y]);    
-    // const middleFingerAngle = Math.acos(middleFingerTip!.y / middleFingerLineLength)
-    // const wristLineLength = magnitude([wrist!.x, wrist!.y]);
-    // const wristAngle = Math.acos(wrist!.y / wristLineLength);
-
     
     return Math.asin(delta[0] / deltaLength);
   }
 
-  isCurled(tip: KeyPoint, dip: KeyPoint, mcp: KeyPoint ): boolean {    
-    const tipDistance = Math.sqrt(Math.pow(tip.x - mcp.x, 2) + Math.pow(tip.y - mcp.y, 2));
-    const dipDistance = Math.sqrt(Math.pow(dip.x - mcp.x, 2) + Math.pow(dip.y - mcp.y, 2));
-    return tipDistance < dipDistance;
-  }
+  
 
   isFingerCurled(fingerMap: Map<string, KeyPoint>, name: string): boolean {
     const tip = fingerMap.get(`${name}_finger_tip`);
     const dip = fingerMap.get(`${name}_finger_dip`);
     const mcp = fingerMap.get(`${name}_finger_mcp`);
-    return this.isCurled(tip!, dip!, mcp!);
+    return this.isFirstPointCloser(tip!, dip!, mcp!);
+  }
+
+  isFirstPointCloser(firstPoint: KeyPoint, secondPoint: KeyPoint, destPoint: KeyPoint ): boolean {    
+    const firstPointDelta = minus([firstPoint!.x, firstPoint!.y], [destPoint!.x, destPoint!.y]);
+    const firstPointDeltaLength = magnitude(firstPointDelta);
+    const secondPointDelta = minus([secondPoint!.x, secondPoint!.y], [destPoint!.x, destPoint!.y]);
+    const secondPointDeltaLength = magnitude(secondPointDelta);
+
+    return firstPointDeltaLength < secondPointDeltaLength;
+  }
+
+  isFingerClosed(fingerMap: Map<string, KeyPoint>, name: string): boolean {
+    const tip = fingerMap.get(`${name}_finger_tip`);
+    const dip = fingerMap.get(`${name}_finger_dip`);
+    const wrist = fingerMap.get('wrist');
+    return this.isFirstPointCloser(tip!, dip!, wrist!);
+  }
+
+  isThumbClosed(fingerMap: Map<string, KeyPoint>) {
+    const thumb_tip = fingerMap.get('thumb_tip');
+    const thumb_mcp = fingerMap.get('thumb_mcp');
+    console.log('thumb');
+    console.log(fingerMap);
+    const index_finger_cmc = fingerMap.get('index_finger_mcp');
+    return this.isFirstPointCloser(thumb_tip!, thumb_mcp!, index_finger_cmc!);
   }
 
   isHandFacingCamera(fingerMap: Map<string, KeyPoint>, handedness: string): boolean {
@@ -284,16 +306,17 @@ export class GestureWindowComponent implements AfterViewInit {
 
 
   isScissors(fingerMap: Map<string, KeyPoint>): boolean {
-    const isPinkyCurled = this.isFingerCurled(fingerMap, 'pinky');
-    const isRingCurled = this.isFingerCurled(fingerMap, 'ring');
-    const isIndexCurled = this.isFingerCurled(fingerMap, 'index');
-    const isMiddleCurled = this.isFingerCurled(fingerMap, 'middle');
-    console.log('curled fingers');
-    console.log(isIndexCurled);
-    console.log(isMiddleCurled);
-    console.log(isRingCurled);
-    console.log(isPinkyCurled);
-    return isPinkyCurled && isRingCurled && !isIndexCurled && !isMiddleCurled;
+    const isPinkyClosed = this.isFingerClosed(fingerMap, 'pinky');
+    const isRingClosed = this.isFingerClosed(fingerMap, 'ring');
+    const isIndexClosed = this.isFingerClosed(fingerMap, 'index');
+    const isMiddleClosed = this.isFingerClosed(fingerMap, 'middle');
+    const isThumbClosed = this.isThumbClosed(fingerMap);
+    // console.log('closed fingers');
+    // console.log(isIndexClosed);
+    // console.log(isMiddleClosed);
+    // console.log(isRingClosed);
+    // console.log(isPinkyClosed);
+    return isPinkyClosed && isRingClosed && isThumbClosed && !isIndexClosed && !isMiddleClosed;
   }
 
   isScissorsOpen(fingerMap: Map<string, KeyPoint>): boolean {
@@ -329,7 +352,7 @@ export class GestureWindowComponent implements AfterViewInit {
     else if(this.isScissors(fingerMap)) {
       const angle = this.getAngleBetweenFingers('index', 'middle', fingerMap);
       console.log('angle between fingers is ' + angle);
-      let isOpen = angle > Math.PI / 9;
+      let isOpen = angle > Math.PI / 15;
       pose = isOpen ? HandPose.ScissorsOpen : HandPose.ScissorsClosed;
     }
     return pose;
