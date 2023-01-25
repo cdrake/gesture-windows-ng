@@ -44,7 +44,28 @@ enum HandPose {
   KnobGripClockwise,
   KnobGripCounterClockwise,
   ScissorsOpen,
-  ScissorsClosed
+  ScissorsClosed,
+  L,
+  Thumbout
+}
+
+enum TwoHandPose {
+  Unknown,
+  TimeOut,
+  Continue
+}
+
+enum HandGesture {
+  SwipeLeft,
+  SwipeRight,
+  Zoom,
+  Pinch,
+  RotateXClockWise,
+  RotateXCounterClockWise,
+  RotateYClockWise,
+  RotateYCounterClockWise,
+  RotateZClockWise,
+  RotateZCounterClockWise,  
 }
 
 enum KnobGesture {
@@ -53,16 +74,16 @@ enum KnobGesture {
   TurnCounterClockwise
 }
 
-type Hand = {pose: HandPose, angle: number, position: {x: number, y: number}}
-type GestureWindow = {id: string, x: number, y: number, width: number, height: number}
+type Hand = { pose: HandPose, angle: number, position: { x: number, y: number } }
+type GestureWindow = { id: string, x: number, y: number, width: number, height: number }
 
 let start: DOMHighResTimeStamp, previousTimeStamp: DOMHighResTimeStamp;
 
 const dot = (a: number[], b: number[]) => a.map((x, i) => a[i] * b[i]).reduce((m, n) => m + n);
-const add = (a: number[], b: number[]) => a.map((e,i) => e + b[i]);
-const minus = (a: number[], b: number[]) => a.map((e,i) => e - b[i]);
-const squared = (x:number) => Math.pow(x, 2);
-const sum = (x:number[]) => x.reduce((a, x) => a + x, 0);
+const add = (a: number[], b: number[]) => a.map((e, i) => e + b[i]);
+const minus = (a: number[], b: number[]) => a.map((e, i) => e - b[i]);
+const squared = (x: number) => Math.pow(x, 2);
+const sum = (x: number[]) => x.reduce((a, x) => a + x, 0);
 const sumOfSquares = (x: number[]) => sum(x.map(squared));
 const magnitude = (a: number[]) => Math.sqrt(sumOfSquares(a));
 
@@ -76,8 +97,11 @@ export class GestureWindowComponent implements AfterViewInit {
   renderingCtx!: CanvasRenderingContext2D;
   outputCanvas!: HTMLCanvasElement;
   videoElement!: HTMLVideoElement;
-  leftHandPose = HandPose.Unknown;
-  rightHandPose = HandPose.Unknown;
+  leftHandPose = new Subject<HandPose>();
+  rightHandPose = new Subject<HandPose>();
+  leftHandGesture = new Subject<HandGesture>();
+  rightHandGesture = new Subject<HandGesture>();
+  twoHandedPose = new Subject<TwoHandPose>();
   leftHand = new Subject<Hand>();
   rightHand = new Subject<Hand>();
 
@@ -85,7 +109,7 @@ export class GestureWindowComponent implements AfterViewInit {
 
   // add window changed, pose change, position change
 
-  
+
   constructor() { }
 
   async setupCamera(): Promise<HTMLVideoElement> {
@@ -154,19 +178,23 @@ export class GestureWindowComponent implements AfterViewInit {
         this.videoElement, 0, 0, this.videoElement.width, this.videoElement.height, 0, 0, this.outputCanvas.width,
         this.outputCanvas.height);
       const hands = await this.detector.estimateHands(this.videoElement);
+      let rightHandPose: HandPose;
+      let leftHandPose: HandPose;
+
       if (hands.length > 0) {
         for (const hand of hands) {
           const result = hand.keypoints;
-          let fingerMap = new Map((result as KeyPoint[]).map(obj  => [obj.name, obj]));
+          let fingerMap = new Map((result as KeyPoint[]).map(obj => [obj.name, obj]));
           let pose = this.detectPose(fingerMap, result.handedness);
           let angle = this.getHandAngle(fingerMap);
           let wrist = fingerMap.get('wrist');
-          let position = {x: wrist!.x, y: wrist!.y}; 
+          let position = { x: wrist!.x, y: wrist!.y };
           // this.detectGesture(result, hand.handedness);
           let isRightHand = hand.handedness === 'Right';
           let color: string;
           if (isRightHand) {
-            this.rightHand.next({pose, angle, position});
+            rightHandPose = pose;
+            this.rightHand.next({ pose, angle, position });
             switch (pose) {
               case HandPose.KnobGripClockwise:
                 color = 'green';
@@ -180,6 +208,9 @@ export class GestureWindowComponent implements AfterViewInit {
               case HandPose.ScissorsClosed:
                 color = 'black';
                 break;
+              case HandPose.L:
+                color = 'cornflowerblue';
+                break;
               default:
                 color = 'red';
                 break;
@@ -187,7 +218,8 @@ export class GestureWindowComponent implements AfterViewInit {
 
           }
           else {
-            this.leftHand.next({pose, angle, position});
+            leftHandPose = pose;
+            this.leftHand.next({ pose, angle, position });
             switch (pose) {
               case HandPose.KnobGripClockwise:
                 color = 'purple';
@@ -200,6 +232,9 @@ export class GestureWindowComponent implements AfterViewInit {
                 break;
               case HandPose.ScissorsClosed:
                 color = 'black';
+                break;
+              case HandPose.L:
+                color = 'cornflowerblue';
                 break;
               default:
                 color = 'blue';
@@ -238,11 +273,11 @@ export class GestureWindowComponent implements AfterViewInit {
     const wrist = fingerMap.get('wrist');
     const delta = minus([middleFingerTip!.x, middleFingerTip!.y], [wrist!.x, wrist!.y]);
     const deltaLength = magnitude(delta);
-    
+
     return Math.asin(delta[0] / deltaLength);
   }
 
-  
+
 
   isFingerCurled(fingerMap: Map<string, KeyPoint>, name: string): boolean {
     const tip = fingerMap.get(`${name}_finger_tip`);
@@ -251,7 +286,7 @@ export class GestureWindowComponent implements AfterViewInit {
     return this.isFirstPointCloser(tip!, dip!, mcp!);
   }
 
-  isFirstPointCloser(firstPoint: KeyPoint, secondPoint: KeyPoint, destPoint: KeyPoint ): boolean {    
+  isFirstPointCloser(firstPoint: KeyPoint, secondPoint: KeyPoint, destPoint: KeyPoint): boolean {
     const firstPointDelta = minus([firstPoint!.x, firstPoint!.y], [destPoint!.x, destPoint!.y]);
     const firstPointDeltaLength = magnitude(firstPointDelta);
     const secondPointDelta = minus([secondPoint!.x, secondPoint!.y], [destPoint!.x, destPoint!.y]);
@@ -279,7 +314,7 @@ export class GestureWindowComponent implements AfterViewInit {
   isHandFacingCamera(fingerMap: Map<string, KeyPoint>, handedness: string): boolean {
     const ring_finger_mcp = fingerMap.get('ring_finger_mcp');
     const pinky_finger_mcp = fingerMap.get('pinky_finger_mcp');
-    if(!ring_finger_mcp || !pinky_finger_mcp) {
+    if (!ring_finger_mcp || !pinky_finger_mcp) {
       console.log('finger not seen');
       console.log(fingerMap);
       return false;
@@ -289,13 +324,13 @@ export class GestureWindowComponent implements AfterViewInit {
     return (handedness === 'Right') ? ring_finger_mcp.x < pinky_finger_mcp.x : ring_finger_mcp.x > pinky_finger_mcp.x;
   }
 
-  
+
 
   isGrip(fingerMap: Map<string, KeyPoint>): boolean {
     let isGrip = true;
-    
-    for(const fingerName of fingerNames) {      
-      if(!this.isFingerCurled(fingerMap, fingerName)) {
+
+    for (const fingerName of fingerNames) {
+      if (!this.isFingerCurled(fingerMap, fingerName)) {
         isGrip = false;
         break;
       }
@@ -322,7 +357,7 @@ export class GestureWindowComponent implements AfterViewInit {
   isScissorsOpen(fingerMap: Map<string, KeyPoint>): boolean {
     const isScissors = this.isScissors(fingerMap);
     let isOpen = false;
-    if(isScissors) {
+    if (isScissors) {
       const angle = this.getAngleBetweenFingers('index', 'middle', fingerMap);
       isOpen = angle > Math.PI / 9;
     }
@@ -330,30 +365,53 @@ export class GestureWindowComponent implements AfterViewInit {
     return isScissors && isOpen;
   }
 
+  isL(fingerMap: Map<string, KeyPoint>): boolean {
+    const isPinkyClosed = this.isFingerClosed(fingerMap, 'pinky');
+    const isRingClosed = this.isFingerClosed(fingerMap, 'ring');
+    const isIndexClosed = this.isFingerClosed(fingerMap, 'index');
+    const isMiddleClosed = this.isFingerClosed(fingerMap, 'middle');
+    const isThumbClosed = this.isThumbClosed(fingerMap);
+
+    return !isIndexClosed && !isThumbClosed && isPinkyClosed && isRingClosed && isMiddleClosed;
+  }
+
+  isThumbOut(fingerMap: Map<string, KeyPoint>): boolean {
+    const isPinkyClosed = this.isFingerClosed(fingerMap, 'pinky');
+    const isRingClosed = this.isFingerClosed(fingerMap, 'ring');
+    const isIndexClosed = this.isFingerClosed(fingerMap, 'index');
+    const isMiddleClosed = this.isFingerClosed(fingerMap, 'middle');
+    const isThumbClosed = this.isThumbClosed(fingerMap);
+
+    return !isThumbClosed && isIndexClosed && isPinkyClosed && isRingClosed && isMiddleClosed;
+  }
+
   detectPose(fingerMap: Map<string, KeyPoint>, handedness: string): HandPose {
     // console.log(keypoints);    
     let pose = HandPose.Unknown;
     //&& this.isHandFacingCamera(fingerMap, handedness)
-    if(this.isGrip(fingerMap) ) {
+    if (this.isGrip(fingerMap)) {
       // console.log('is Grip');
       const handAngle = this.getHandAngle(fingerMap);
       // console.log('hand angle is ' + handAngle);
-      if(handAngle > Math.PI / 8) {
+      if (handAngle > Math.PI / 8) {
         pose = HandPose.KnobGripCounterClockwise;
-        
+
       }
-      else if(handAngle < (-1 * Math.PI / 8)) {
+      else if (handAngle < (-1 * Math.PI / 8)) {
         pose = HandPose.KnobGripClockwise;
       }
       else {
         pose = HandPose.KnobGripNeutral;
       }
     }
-    else if(this.isScissors(fingerMap)) {
+    else if (this.isScissors(fingerMap)) {
       const angle = this.getAngleBetweenFingers('index', 'middle', fingerMap);
       console.log('angle between fingers is ' + angle);
       let isOpen = angle > Math.PI / 15;
       pose = isOpen ? HandPose.ScissorsOpen : HandPose.ScissorsClosed;
+    }
+    else if (this.isL(fingerMap)) {
+      pose = HandPose.L;
     }
     return pose;
   }
