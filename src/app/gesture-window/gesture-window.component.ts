@@ -5,7 +5,8 @@ import { MediaPipeHandsModelConfig } from '@tensorflow-models/hand-pose-detectio
 import { Sub } from '@tensorflow/tfjs-core';
 import { Position } from 'estree';
 import { Key } from 'readline';
-import { Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
+import { GestureService, HandGesture, OneHandedGesture } from '../gesture.service';
 
 type KeyPoint = { x: number, y: number, score: undefined, name: string }
 
@@ -55,18 +56,6 @@ enum TwoHandPose {
   Continue
 }
 
-enum HandGesture {
-  SwipeLeft,
-  SwipeRight,
-  Zoom,
-  Pinch,
-  RotateXClockWise,
-  RotateXCounterClockWise,
-  RotateYClockWise,
-  RotateYCounterClockWise,
-  RotateZClockWise,
-  RotateZCounterClockWise,  
-}
 
 enum KnobGesture {
   None,
@@ -97,20 +86,20 @@ export class GestureWindowComponent implements AfterViewInit {
   renderingCtx!: CanvasRenderingContext2D;
   outputCanvas!: HTMLCanvasElement;
   videoElement!: HTMLVideoElement;
-  leftHandPose = new Subject<HandPose>();
-  rightHandPose = new Subject<HandPose>();
-  leftHandGesture = new Subject<HandGesture>();
-  rightHandGesture = new Subject<HandGesture>();
-  twoHandedPose = new Subject<TwoHandPose>();
-  leftHand = new Subject<Hand>();
-  rightHand = new Subject<Hand>();
+  leftHandPose = new BehaviorSubject<HandPose>(HandPose.Unknown);
+  rightHandPose = new BehaviorSubject<HandPose>(HandPose.Unknown);
+  leftHandGesture = new BehaviorSubject<HandGesture>(HandGesture.None);
+  rightHandGesture = new BehaviorSubject<HandGesture>(HandGesture.None);
+  twoHandedPose = new BehaviorSubject<TwoHandPose>(TwoHandPose.Unknown);
+  leftHand = new BehaviorSubject<Hand>({pose: HandPose.Unknown, angle: 0, position: {x: 0, y: 0}});
+  rightHand = new BehaviorSubject<Hand>({pose: HandPose.Unknown, angle: 0, position: {x: 0, y: 0}});
 
   windowMap = new Map<string, GestureWindow>();
 
   // add window changed, pose change, position change
 
 
-  constructor() { }
+  constructor(private gestureService: GestureService) { }
 
   async setupCamera(): Promise<HTMLVideoElement> {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -191,22 +180,36 @@ export class GestureWindowComponent implements AfterViewInit {
           let position = { x: wrist!.x, y: wrist!.y };
           // this.detectGesture(result, hand.handedness);
           let isRightHand = hand.handedness === 'Right';
+          let gesture = HandGesture.None;
           let color: string;
           if (isRightHand) {
-            rightHandPose = pose;
+            let currentRightHandPose = this.rightHandPose.getValue();
+            let isRightHandGripNeutral = currentRightHandPose === HandPose.KnobGripNeutral;
+            let isRightHandScissorsOpen = currentRightHandPose === HandPose.ScissorsOpen;
+            
             this.rightHand.next({ pose, angle, position });
+
             switch (pose) {
               case HandPose.KnobGripClockwise:
                 color = 'green';
+                if(isRightHandGripNeutral) {
+                  gesture = HandGesture.RotateZClockWise;
+                }
                 break;
               case HandPose.KnobGripCounterClockwise:
                 color = 'yellow';
+                if(isRightHandGripNeutral) {
+                  gesture = HandGesture.RotateZCounterClockWise;
+                }
                 break;
               case HandPose.ScissorsOpen:
                 color = 'white';
                 break;
               case HandPose.ScissorsClosed:
                 color = 'black';
+                if(isRightHandScissorsOpen) {
+                  gesture = HandGesture.Clip;
+                }
                 break;
               case HandPose.L:
                 color = 'cornflowerblue';
@@ -218,19 +221,32 @@ export class GestureWindowComponent implements AfterViewInit {
 
           }
           else {
+            let currentLeftHandPose = this.rightHandPose.getValue();
+            let isLefttHandGripNeutral = currentLeftHandPose === HandPose.KnobGripNeutral;
+            let isLeftHandScissorsOpen = currentLeftHandPose === HandPose.ScissorsOpen;
+
             leftHandPose = pose;
             this.leftHand.next({ pose, angle, position });
             switch (pose) {
               case HandPose.KnobGripClockwise:
                 color = 'purple';
+                if(isLefttHandGripNeutral) {
+                  gesture = HandGesture.RotateZClockWise;
+                }
                 break;
               case HandPose.KnobGripCounterClockwise:
                 color = 'aqua';
+                if(isLefttHandGripNeutral) {
+                  gesture = HandGesture.RotateZCounterClockWise;
+                }
                 break;
               case HandPose.ScissorsOpen:
                 color = 'white';
                 break;
               case HandPose.ScissorsClosed:
+                if(isLeftHandScissorsOpen) {
+                  gesture = HandGesture.Clip;
+                }
                 color = 'black';
                 break;
               case HandPose.L:
@@ -241,6 +257,7 @@ export class GestureWindowComponent implements AfterViewInit {
                 break;
             }
           }
+          this.gestureService.setGesture({gesture, handedness: hand.handedness});
           this.drawKeypoints(result, color);
         }
       }

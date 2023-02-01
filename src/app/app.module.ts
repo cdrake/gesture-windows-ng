@@ -5,11 +5,13 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { GestureWindowComponent } from './gesture-window/gesture-window.component';
+import { NiivueDetailComponent } from './niivue-detail/niivue-detail.component';
 
 @NgModule({
   declarations: [
     AppComponent,
-    GestureWindowComponent
+    GestureWindowComponent,
+    NiivueDetailComponent
   ],
   imports: [
     BrowserModule,

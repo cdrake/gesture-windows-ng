@@ -2127,6 +2127,19 @@
   resolved "https://registry.yarnpkg.com/@ngtools/webpack/-/webpack-15.1.0.tgz#ac6439810f8768a5f06e7d1a24b8faf31d415ab6"
   integrity sha512-7CyQk5eADg0fsi+EDa3DWIyR+CjymcyToWU0uBpuyrZCl5gUnzgeWZIQiQ0HyaMxWPfQ5cwwZ1YeAwkxMpKL2w==
 
+"@niivue/niivue@^0.32.0":
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/@niivue/niivue/-/niivue-0.32.0.tgz#151331396c9a62628afae4d116a96e7fc9a8b31b"
+  integrity sha512-g5DA/fDCKngjK06JjYdyjixnidPg7AnGaEfFO4ag9gVyUZehdHczMJ5eHbzEA3m71d+CtNwhQY0hf1wR1+BSyA==
+  dependencies:
+    "@ungap/structured-clone" "^1.0.1"
+    daikon "^1.2.42"
+    fflate "^0.7.3"
+    gl-matrix "^3.4.3"
+    nifti-reader-js "^0.5.4"
+    rxjs "^7.4.0"
+    uuid "^8.3.2"
+
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.yarnpkg.com/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz#7619c2eb21b25483f6d167548b4cfd5a7488c3d5"
@@ -2444,6 +2457,11 @@
   integrity sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==
   dependencies:
     "@types/node" "*"
+
+"@ungap/structured-clone@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@ungap/structured-clone/-/structured-clone-1.0.1.tgz#549ce746c163d0869a61cfdabafe625a13ab5d0f"
+  integrity sha512-zKVyTt6rELvPXYwcVPTJcPFtY0AckN5A7xWuc7owBqR0FdtuDYhE9MZZUi6IY1kZUQFSXV1B3UOOIyLkVHYd2w==
 
 "@webassemblyjs/ast@1.11.1":
   version "1.11.1"
@@ -3357,6 +3375,14 @@ custom-event@~1.0.0:
   resolved "https://registry.yarnpkg.com/custom-event/-/custom-event-1.0.1.tgz#5d02a46850adf1b4a317946a3928fccb5bfd0425"
   integrity sha512-GAj5FOq0Hd+RsCGVJxZuKaIDXDf3h6GQoNEjFgbLLI/trgtavwUbSnZ5pVfg27DVCaWjIohryS0JFwIJyT2cMg==
 
+daikon@^1.2.42:
+  version "1.2.42"
+  resolved "https://registry.yarnpkg.com/daikon/-/daikon-1.2.42.tgz#7239d66b5f9638006f0674f86514b1fdaca33e7c"
+  integrity sha512-uEJKRNpJo6lWCMr1UehBJLCnpsmoY4cmaedjL03UCeUmyoV2SsCYiEo8I+rhfuoj2FHqtDJFRGfZAW729berww==
+  dependencies:
+    jpeg-lossless-decoder-js "git+https://github.com/rii-mango/JPEGLosslessDecoderJS.git"
+    pako "^1.0.6"
+
 date-format@^4.0.14:
   version "4.0.14"
   resolved "https://registry.yarnpkg.com/date-format/-/date-format-4.0.14.tgz#7a8e584434fb169a521c8b7aa481f355810d9400"
@@ -3805,6 +3831,11 @@ faye-websocket@^0.11.3:
   dependencies:
     websocket-driver ">=0.5.1"
 
+fflate@^0.7.3:
+  version "0.7.4"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.7.4.tgz#61587e5d958fdabb5a9368a302c25363f4f69f50"
+  integrity sha512-5u2V/CDW15QM1XbbgS+0DfPxVB+jUKhWEKuuFuHncbk3tEEqzmoXL+2KyOFuKGqOnmdIy0/davWF1CkuwtibCw==
+
 figures@^3.0.0:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/figures/-/figures-3.2.0.tgz#625c18bd293c604dc4a8ddb2febf0c88341746af"
@@ -3972,6 +4003,11 @@ get-stream@^6.0.0:
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/get-stream/-/get-stream-6.0.1.tgz#a262d8eef67aced57c2852ad6167526a43cbf7b7"
   integrity sha512-ts6Wi+2j3jQjqi70w5AlN8DFnkSwC+MqmxEzdEALB2qXZYV3X/b1CTfgPLGJNMeAWxdPfU8FO1ms3NUfaHCPYg==
+
+gl-matrix@^3.4.3:
+  version "3.4.3"
+  resolved "https://registry.yarnpkg.com/gl-matrix/-/gl-matrix-3.4.3.tgz#fc1191e8320009fd4d20e9339595c6041ddc22c9"
+  integrity sha512-wcCp8vu8FT22BnvKVPjXa/ICBWRq/zjFfdofZy1WSpQZpphblv12/bOQLBC1rMM7SGOFS9ltVmKOHil5+Ml7gA==
 
 glob-parent@^5.1.2, glob-parent@~5.1.2:
   version "5.1.2"
@@ -4494,6 +4530,10 @@ jest-worker@^27.4.5:
     "@types/node" "*"
     merge-stream "^2.0.0"
     supports-color "^8.0.0"
+
+"jpeg-lossless-decoder-js@git+https://github.com/rii-mango/JPEGLosslessDecoderJS.git":
+  version "2.0.4"
+  resolved "git+https://github.com/rii-mango/JPEGLosslessDecoderJS.git#78fe90c7cae985b1a394a66f99c81633144bb867"
 
 js-tokens@^4.0.0:
   version "4.0.0"
@@ -5076,6 +5116,13 @@ nice-napi@^1.0.2:
     node-addon-api "^3.0.0"
     node-gyp-build "^4.2.2"
 
+nifti-reader-js@^0.5.4:
+  version "0.5.4"
+  resolved "https://registry.yarnpkg.com/nifti-reader-js/-/nifti-reader-js-0.5.4.tgz#a6835f625aba3fd0b91d2554d99545a00d0f2161"
+  integrity sha512-KnZMEw9Wd39x1eTTZQaF5Zjh7LbUeWcxfEj0v5VS/yTkV2y/YHrAnC6VJyf2FjrmsUOElDVjIoHGLMCkcnpiNg==
+  dependencies:
+    pako "*"
+
 node-addon-api@^3.0.0:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-3.2.1.tgz#81325e0a2117789c0128dab65e7e38f07ceba161"
@@ -5373,7 +5420,12 @@ pacote@15.0.6:
     ssri "^10.0.0"
     tar "^6.1.11"
 
-pako@^1.0.3:
+pako@*:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pako/-/pako-2.1.0.tgz#266cc37f98c7d883545d11335c00fbd4062c9a86"
+  integrity sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==
+
+pako@^1.0.3, pako@^1.0.6:
   version "1.0.11"
   resolved "https://registry.yarnpkg.com/pako/-/pako-1.0.11.tgz#6c9599d340d54dfd3946380252a35705a6b992bf"
   integrity sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==
@@ -5855,7 +5907,7 @@ rxjs@6.6.7:
   dependencies:
     tslib "^1.9.0"
 
-rxjs@^7.5.5:
+rxjs@^7.4.0, rxjs@^7.5.5:
   version "7.8.0"
   resolved "https://registry.yarnpkg.com/rxjs/-/rxjs-7.8.0.tgz#90a938862a82888ff4c7359811a595e14e1e09a4"
   integrity sha512-F2+gxDshqmIub1KdvZkaEfGDwLNpPvk9Fs6LD/MyQxNgMds/WH9OdDDXOmxUZpME+iSK3rQCctkL0DYyytUqMg==
