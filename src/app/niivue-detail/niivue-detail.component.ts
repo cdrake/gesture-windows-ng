@@ -8,9 +8,11 @@ import {Niivue} from '@niivue/niivue';
   styleUrls: ['./niivue-detail.component.sass']
 })
 export class NiivueDetailComponent implements OnInit  {
-  @ViewChild('niivueWindow', {read: ElementRef}) niivueWindow!: ElementRef;
+  @ViewChild('gl', {read: ElementRef}) niivueWindow!: ElementRef;
 
   constructor(private gestureService: GestureService) {}
+  niivue = new Niivue({show3Dcrosshair: true});
+  clipPlaneShowing = false;
 
   ngOnInit() {
     this.gestureService.getGestureObservable().subscribe((data: OneHandedGesture) => {
@@ -18,7 +20,11 @@ export class NiivueDetailComponent implements OnInit  {
         let gesture: OneHandedGesture = data;
         switch(gesture.gesture) {
           case HandGesture.Clip:
+            this.clipPlaneShowing = !this.clipPlaneShowing;
             this.niivueWindow.nativeElement.style.backgroundColor = 'yellow';
+            let clipPlane = (this.clipPlaneShowing) ? [2, 0, 0] : [0, 270, 0];
+            this.niivue.setClipPlane(clipPlane);
+            
             break;
           case HandGesture.RotateZClockWise:
             this.niivueWindow.nativeElement.style.backgroundColor = 'red';
@@ -48,9 +54,10 @@ export class NiivueDetailComponent implements OnInit  {
         visible: true,
       },
     ];
-    const niivue = new Niivue({show3Dcrosshair: true});
-    niivue.attachTo('gl');
-    niivue.loadVolumes(volumeList);
+    
+    this.niivue.attachTo('gl');
+    this.niivue.loadVolumes(volumeList);
+    this.niivue.setSliceType(this.niivue.sliceTypeRender);
 }
 
 }
