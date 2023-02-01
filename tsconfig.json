@@ -9,6 +9,7 @@
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
+    "noImplicitAny": false,
     "noFallthroughCasesInSwitch": true,
     "sourceMap": true,
     "declaration": false,
@@ -17,13 +18,16 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "CommonJS",
     "useDefineForClassFields": false,
     "lib": [
       "ES2022",
       "dom"
     ],
-    "skipLibCheck": true, 
+    "skipLibCheck": true,
+  },
+  "paths": {
+    "*": ["src/types/*"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { GestureService, HandGesture, OneHandedGesture } from '../gesture.service';
+import {Niivue} from '@niivue/niivue';
 
 @Component({
   selector: 'app-niivue-detail',
@@ -36,6 +37,20 @@ export class NiivueDetailComponent implements OnInit  {
           console.log(data);
         }
     });
+
+    const url = './assets/mni152.nii.gz';
+    const volumeList = [
+      {
+        url,
+        volume: { hdr: null, img: null },
+        colorMap: 'gray',
+        opacity: 1,
+        visible: true,
+      },
+    ];
+    const niivue = new Niivue({show3Dcrosshair: true});
+    niivue.attachTo('gl');
+    niivue.loadVolumes(volumeList);
 }
 
 }
