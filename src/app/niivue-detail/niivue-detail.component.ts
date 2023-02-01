@@ -21,16 +21,18 @@ export class NiivueDetailComponent implements OnInit  {
         switch(gesture.gesture) {
           case HandGesture.Clip:
             this.clipPlaneShowing = !this.clipPlaneShowing;
-            this.niivueWindow.nativeElement.style.backgroundColor = 'yellow';
+            // this.niivueWindow.nativeElement.style.backgroundColor = 'yellow';
             let clipPlane = (this.clipPlaneShowing) ? [2, 0, 0] : [0, 270, 0];
             this.niivue.setClipPlane(clipPlane);
             
             break;
           case HandGesture.RotateZClockWise:
-            this.niivueWindow.nativeElement.style.backgroundColor = 'red';
+            // this.niivueWindow.nativeElement.style.backgroundColor = 'red';
+            this.niivue.setRenderAzimuthElevation(this.niivue.scene.renderAzimuth + 5, this.niivue.scene.renderElevation);
             break;
           case HandGesture.RotateZCounterClockWise:
-            this.niivueWindow.nativeElement.style.backgroundColor = 'blue';
+            // this.niivueWindow.nativeElement.style.backgroundColor = 'blue';
+            this.niivue.setRenderAzimuthElevation(this.niivue.scene.renderAzimuth - 5, this.niivue.scene.renderElevation);
             break;
           default:
             // console.log('no gesture found');
