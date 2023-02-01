@@ -186,7 +186,7 @@ export class GestureWindowComponent implements AfterViewInit {
             let currentRightHandPose = this.rightHandPose.getValue();
             let isRightHandGripNeutral = currentRightHandPose === HandPose.KnobGripNeutral;
             let isRightHandScissorsOpen = currentRightHandPose === HandPose.ScissorsOpen;
-            
+            this.rightHandPose.next(pose);
             this.rightHand.next({ pose, angle, position });
 
             switch (pose) {
@@ -221,10 +221,10 @@ export class GestureWindowComponent implements AfterViewInit {
 
           }
           else {
-            let currentLeftHandPose = this.rightHandPose.getValue();
+            let currentLeftHandPose = this.leftHandPose.getValue();
             let isLefttHandGripNeutral = currentLeftHandPose === HandPose.KnobGripNeutral;
             let isLeftHandScissorsOpen = currentLeftHandPose === HandPose.ScissorsOpen;
-
+            this.leftHandPose.next(pose);
             leftHandPose = pose;
             this.leftHand.next({ pose, angle, position });
             switch (pose) {
@@ -256,6 +256,9 @@ export class GestureWindowComponent implements AfterViewInit {
                 color = 'blue';
                 break;
             }
+          }
+          if(gesture != HandGesture.None) {
+            console.log(gesture);
           }
           this.gestureService.setGesture({gesture, handedness: hand.handedness});
           this.drawKeypoints(result, color);
@@ -322,8 +325,8 @@ export class GestureWindowComponent implements AfterViewInit {
   isThumbClosed(fingerMap: Map<string, KeyPoint>) {
     const thumb_tip = fingerMap.get('thumb_tip');
     const thumb_mcp = fingerMap.get('thumb_mcp');
-    console.log('thumb');
-    console.log(fingerMap);
+    // console.log('thumb');
+    // console.log(fingerMap);
     const index_finger_cmc = fingerMap.get('index_finger_mcp');
     return this.isFirstPointCloser(thumb_tip!, thumb_mcp!, index_finger_cmc!);
   }
@@ -332,8 +335,8 @@ export class GestureWindowComponent implements AfterViewInit {
     const ring_finger_mcp = fingerMap.get('ring_finger_mcp');
     const pinky_finger_mcp = fingerMap.get('pinky_finger_mcp');
     if (!ring_finger_mcp || !pinky_finger_mcp) {
-      console.log('finger not seen');
-      console.log(fingerMap);
+      // console.log('finger not seen');
+      // console.log(fingerMap);
       return false;
     }
     const handAngle = this.getHandAngle(fingerMap);
@@ -423,7 +426,7 @@ export class GestureWindowComponent implements AfterViewInit {
     }
     else if (this.isScissors(fingerMap)) {
       const angle = this.getAngleBetweenFingers('index', 'middle', fingerMap);
-      console.log('angle between fingers is ' + angle);
+      // console.log('angle between fingers is ' + angle);
       let isOpen = angle > Math.PI / 15;
       pose = isOpen ? HandPose.ScissorsOpen : HandPose.ScissorsClosed;
     }
@@ -438,8 +441,8 @@ export class GestureWindowComponent implements AfterViewInit {
     let fingerMap = new Map(keypoints.map(obj => [obj.name, obj]));
     const middleFingerTip = fingerMap.get('middle_finger_tip');
     const compareFingerTip = handedness === 'Right' ? fingerMap.get('index_finger_tip') : fingerMap.get('ring_finger_tip');
-    console.log('detecting knob turn');
-    console.log(keypoints);
+    // console.log('detecting knob turn');
+    // console.log(keypoints);
     if (middleFingerTip!.y - compareFingerTip!.y > threshold) {
       gesture = KnobGesture.TurnCounterClockwise;
     }

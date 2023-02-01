@@ -13,6 +13,7 @@ export class NiivueDetailComponent implements OnInit  {
 
   ngOnInit() {
     this.gestureService.getGestureObservable().subscribe((data: OneHandedGesture) => {
+        let defaultGesture = false;
         let gesture: OneHandedGesture = data;
         switch(gesture.gesture) {
           case HandGesture.Clip:
@@ -27,10 +28,13 @@ export class NiivueDetailComponent implements OnInit  {
           default:
             // console.log('no gesture found');
             // this.niivueWindow.nativeElement.style.backgroundColor = 'black';
+            defaultGesture = true;
             break;
         }
-        console.log('gesture data');
-        console.log(data);
+        if(!defaultGesture) {
+          console.log('gesture data');
+          console.log(data);
+        }
     });
 }
 
